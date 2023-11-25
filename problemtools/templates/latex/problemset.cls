@@ -1,5 +1,5 @@
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesClass{problemset}[2012/01/19 Problem Set For ACM-Style Programming Contests]
+\ProvidesClass{problemset}[2023/25/11 Problem Set For ACM-Style Programming Contests - modified]
 
 
 \newif\ifplastex
@@ -33,23 +33,54 @@
 
 \LoadClass{article}
 
-\RequirePackage{times}            % Font choice
+\RequirePackage{polyglossia}
+\setmainlanguage{english}
+\RequirePackage[final]{microtype}
+\RequirePackage{lmodern}          % Font choice
+\renewcommand{\familydefault}{\sfdefault}
+%\usepackage{cmbright}
+
 \RequirePackage{amsmath}          % AMS
 \RequirePackage{amssymb}          % AMS
-\RequirePackage[OT2,T1]{fontenc}  % Cyrillic and standard % TODO: make alphabet options more general
-\RequirePackage[utf8]{inputenc}   % UTF-8 support
+\RequirePackage{luatexbase}
+\RequirePackage{lualatex-math}
+\RequirePackage{fontspec}
 \RequirePackage{fancyhdr}         % Headers
 \RequirePackage{graphicx}         % Graphics
 \RequirePackage{subfigure}        % Subfigures
 \RequirePackage{wrapfig}          % Illustrations
 \RequirePackage{import}           % Proper file inclusion
 \RequirePackage{fancyvrb}         %
-\RequirePackage{listingsutf8}     % For samples
+\RequirePackage{listings}
+\RequirePackage{minted}
+%%\RequirePackage{listingsutf8}     % For samples
 \RequirePackage[left=1in,right=1in,top=0.75in,bottom=0.75in]{geometry}
 %\RequirePackage{fullpage}        % Set up margins for full page
 \RequirePackage{url}              % Urls
 \RequirePackage[normalem]{ulem}   % \sout
 \RequirePackage[colorlinks=true,implicit=false]{hyperref}
+\RequirePackage{booktabs}
+\RequirePackage{csquotes}
+\RequirePackage{setspace}
+
+%\usepackage{lstautogobble}
+%\lstset{
+%	basicstyle=\scriptsize\ttfamily,
+%	autogobble,
+%	xleftmargin=0.1cm,
+%	aboveskip=0cm,
+%	belowskip=0cm,
+%	commentstyle=\color{green},
+%	keywordstyle=\color{blue},
+%	numberstyle=\color{gray},
+%	stringstyle=\color{purple}
+%}
+
+\setminted{fontsize=\small,autogobble,tabsize=2}
+\newenvironment{code}[1]%
+{\VerbatimEnvironment\begin{minted}[escapeinside=§§,mathescape=true,fontsize=\footnotesize]{#1}}%
+{\end{minted}}
+
 \ifplastex\else
 \RequirePackage{xstring}
 \RequirePackage{pgffor}
@@ -89,18 +120,12 @@
 
 % Typesetting sections in a problem
 
-\renewcommand\section{\@startsection{section}{1}{\z@}%
-                                   {-3ex}%
-                                   {1ex}%
-                                   {\normalfont\large\sf\bfseries}}
+\renewcommand{\section}{\@startsection{section}{1}{\z@}{-3ex}{1ex}{\normalfont\large\sf\bfseries}}
 \newenvironment{Input}{\section*{Input}}{}
 \newenvironment{Output}{\section*{Output}}{}
 \newenvironment{Interaction}{\section*{Interaction}}{}
 
-\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
-                                     {-3.55ex}%
-                                     {1.7ex}%
-                                     {\normalfont\normalsize\sf\bfseries}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}{-3.55ex}{1.7ex}{\normalfont\normalsize\sf\bfseries}}
 
 \renewcommand{\contentsname}{Problems}
 
@@ -199,11 +224,10 @@
 
 \newread\ps@timelimitfile
 \newcommand{\problemheader}[2]{
-  \begin{center}
-    \textsf{
-      \if@problemnumbers {\huge Problem \problemnumber\\[3mm]}  \fi
-      {\LARGE #1}
-      \if@problemids {\\[2mm]{\Large Problem ID: #2}} \fi
+  \begin{center}%
+    \textsf{\if@problemnumbers{\huge Problem \problemnumber\\[3mm]}\fi%
+      {\LARGE #1}%
+      \if@problemids {\\[2mm]{\Large Problem ID: #2}} \fi%
       \IfFileExists{#2/.timelimit}{
         \openin\ps@timelimitfile=#2/.timelimit
         \read\ps@timelimitfile to\ps@timelimit
@@ -213,9 +237,8 @@
       \\[5mm]
     }
   \end{center}
-  \addtocontents{toc}{
-    \if@problemnumbers \problemnumber \fi
-    & \@problemname \\}%
+
+  \addtocontents{prob}{\if@problemnumbers\problemnumber\fi & \@problemname\\}
 }
 
 %% Commands related to sample data
@@ -244,7 +267,7 @@
       \ClassError{problemset}{Can't find any sample named #1}{}
     }
   }
-    
+
 }
 
 \newcommand{\displaysample}[1]{
@@ -277,8 +300,8 @@
 
 \newcommand{\sampletable}[4]{
   % First find widths of the two files
-  \savebox{\PS@sampleinbox}{\lstinputlisting[inputencoding=utf8/latin1,basicstyle=\ttfamily]{#2}}
-  \savebox{\PS@sampleoutbox}{\lstinputlisting[inputencoding=utf8/latin1,basicstyle=\ttfamily]{#4}}
+  \savebox{\PS@sampleinbox}{\lstinputlisting[inputencoding=utf8/latin1,basicstyle=\ttfamily\small]{#2}}
+  \savebox{\PS@sampleoutbox}{\lstinputlisting[inputencoding=utf8/latin1,basicstyle=\ttfamily\small]{#4}}
   \settowidth{\PS@sampleoutwidth}{\usebox{\PS@sampleoutbox}}
   \settowidth{\PS@sampleinwidth}{\usebox{\PS@sampleinbox}}
   \setlength{\PS@sampletotwidth}{\PS@sampleinwidth}
@@ -350,7 +373,7 @@
       \vspace{-\parskip}
       \vspace{0.05cm}
       \par\noindent
-      \if w\curmode\hfill\fi    
+      \if w\curmode\hfill\fi
       \begin{tabular}{|l|}
         \hline
         \parbox[t]{0.55\textwidth}{
@@ -415,15 +438,81 @@
   \pagestyle{problem}
 
   % Set up table of contents for cover page
-  \addtocontents{toc}{\protect\begin{tabular}{cl}}
+  \addtocontents{prob}{\begin{tabular}{cl}}%
 }
 
 \AtEndDocument{
   \clearproblemsetpage
   % Annoyingly enough addtocontents won't work at end of doc
   \immediate\write\@auxout{%
-    \string\@writefile{toc}{\string\end{tabular}}%
+    \string\@writefile{prob}{\string\end{tabular}}%
   }
 }
 
 \fi
+
+\setlength{\parindent}{0mm}
+\setlength{\parskip}{1.5mm}
+
+\newenvironment{coverpage}{
+  \thispagestyle{empty}
+  \topskip60pt
+  \begin{center}
+    \ifx \@contestname \@empty
+      \ifx \@contestshortname \@empty
+        \ClassError{problemset}{Must provide either contest name or contest short name for cover page.}{}
+      \else
+        {\Huge \@contestshortname}
+      \fi
+    \else
+      {\Huge \@contestname}
+    \fi
+    \\
+    %
+    \vspace{1.0cm}
+    %
+    \ifx \@location \@empty \relax \else
+      {\Large \@location}\\[0.5cm]
+    \fi
+    %
+    \ifx \@author \@empty
+      \ClassError{problemset}{Must provide author list}{}
+    \else
+      {\setstretch{1.25} \Large \@author{} \\[0.5cm]}
+    \fi
+    %
+    \ifx \@contestlogo \@empty \relax \else
+      \includegraphics[height=1cm]{\@contestlogo}\\
+    \fi
+  \end{center}
+}{
+  \vspace{2cm}
+  \cleardoublepage
+  \setcounter{page}{1}
+}
+
+
+%quote
+\RequirePackage{changepage}
+\newenvironment{myquote}{
+  \begin{adjustwidth}{4em}{4em}\begin{itshape}{\bf \Large ``}
+}{
+  \hfill{\bf \Large ''}\end{itshape}\end{adjustwidth}
+}
+
+\RequirePackage{xfrac}
+%\usepackage[subfigure]{tocloft}
+%\renewcommand\cftsecleader{\cftdotfill{\cftdotsep}}
+%\renewcommand{\@cftmaketoctitle}{}
+
+
+\renewcommand\tableofcontents{%
+  \begin{tabular}{cl}
+    \@starttoc{prob}%
+  \end{tabular}
+}
+\makeatother
+
+\makeatletter
+\renewcommand*{\l@section}[2]{#1}
+\makeatother

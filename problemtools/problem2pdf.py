@@ -24,7 +24,7 @@ def convert(problem, options=None):
         origcwd = os.getcwd()
 
         os.chdir(os.path.dirname(texfile))
-        params = ['pdflatex', '-interaction=nonstopmode']
+        params = ['lualatex', '-interaction=nonstopmode', "--shell-escape"]
         output = None
         if options.quiet:
             output = open(os.devnull, 'w')

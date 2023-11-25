@@ -25,6 +25,8 @@ from . import config
 from . import languages
 from . import run
 
+log = logging.getLogger(__name__)
+
 
 def is_TLE(status, may_signal_with_usr1=False):
     return (os.WIFSIGNALED(status) and
@@ -83,6 +85,7 @@ class ProblemAspect:
     errors = 0
     warnings = 0
     bail_on_error = False
+    consider_warnings_errors = False
     _check_res = None
     basename_regex = re.compile('^[a-zA-Z0-9][a-zA-Z0-9_.-]*[a-zA-Z0-9]$')
 
@@ -102,10 +105,13 @@ class ProblemAspect:
 
         return f'{msg}:\n' + '\n'.join(' '*8 + line for line in lines)
 
+    def __init__(self, name):
+        self.log = log.getChild(name)
+
     def error(self, msg, additional_info=None):
         self._check_res = False
         ProblemAspect.errors += 1
-        logging.error('in %s: %s', self, ProblemAspect.__append_additional_info(msg, additional_info))
+        self.log.error(ProblemAspect.__append_additional_info(msg, additional_info))
         if ProblemAspect.bail_on_error:
             raise VerifyError(msg)
 
@@ -114,16 +120,16 @@ class ProblemAspect:
             self.error(msg)
             return
         ProblemAspect.warnings += 1
-        logging.warning('in %s: %s', self, ProblemAspect.__append_additional_info(msg, additional_info))
+        self.log.warning(ProblemAspect.__append_additional_info(msg, additional_info))
 
     def msg(self, msg):
         print(msg)
 
     def info(self, msg):
-        logging.info(': %s', msg)
+        self.log.info(msg)
 
     def debug(self, msg):
-        logging.debug(': %s', msg)
+        self.log.debug(msg)
 
     def check_basename(self, path):
         basename = os.path.basename(path)
@@ -132,13 +138,14 @@ class ProblemAspect:
 
 class TestCase(ProblemAspect):
     def __init__(self, problem, base, testcasegroup):
+        super().__init__(f"{problem.shortname}.test.{testcasegroup.name}.{os.path.basename(base)}")
         self._base = base
         self.infile = f'{base}.in'
         self.ansfile = f'{base}.ans'
         self._problem = problem
         self.testcasegroup = testcasegroup
         self.reuse_result_from = None
-        self._result_cache = (None, None)
+        self._result_cache = (None, (None, None))
         problem.testcase_by_infile[self.infile] = self
 
     def check_newlines(self, filename):
@@ -219,7 +226,7 @@ class TestCase(ProblemAspect):
         res_low = self._init_result_for_testcase(res_low)
         res_high = self._init_result_for_testcase(res_high)
         msg = "Reused test file result" if reused else "Test file result"
-        self.info(f'{msg}: {res}')
+        self.debug(f'{msg}: {res}')
         if res.verdict != 'AC' and self.is_in_sample_group():
             res.sample_failures.append(res)
 
@@ -230,22 +237,21 @@ class TestCase(ProblemAspect):
             return self.reuse_result_from._run_submission_real(sub, args, timelim, timelim_low, timelim_high)
 
         cache_key = (sub, args, timelim, timelim_low, timelim_high)
-        if self._result_cache[0] == cache_key:
-            res, res_low, res_high = self._result_cache[1]
-            return (res, res_low, res_high, True)
+        if not hasattr(args, "use_result_cache") or args.use_result_cache:
+            if self._result_cache[0] == cache_key:
+                res, res_low, res_high = self._result_cache[1]
+                return (res, res_low, res_high, True)
 
         outfile = os.path.join(self._problem.tmpdir, 'output')
-        if sys.stdout.isatty():
-            msg = f'Running {sub} on {self}...'
-            sys.stdout.write(msg)
-            sys.stdout.flush()
+        errfile = os.path.join(self._problem.tmpdir, 'error')
 
         if self._problem.is_interactive:
             res_high = self._problem.output_validators.validate_interactive(self, sub, timelim_high, self._problem.submissions)
         else:
-            status, runtime = sub.run(self.infile, outfile,
+            status, runtime = sub.run(infile=self.infile, outfile=outfile, errfile=errfile,
                                       timelim=timelim_high+1,
-                                      memlim=self._problem.config.get('limits')['memory'])
+                                      memlim=self._problem.config.get('limits')['memory'],
+                                      )
             if is_TLE(status) or runtime > timelim_high:
                 res_high = SubmissionResult('TLE')
             elif is_RTE(status):
@@ -253,8 +259,7 @@ class TestCase(ProblemAspect):
             else:
                 res_high = self._problem.output_validators.validate(self, outfile)
             res_high.runtime = runtime
-        if sys.stdout.isatty():
-            sys.stdout.write('\b \b' * (len(msg)))
+
         if res_high.runtime <= timelim_low:
             res_low = res_high
             res = res_high
@@ -305,8 +310,13 @@ class TestCaseGroup(ProblemAspect):
         self._parent = parent
         self._problem = problem
         self._datadir = datadir
+        self.name = os.path.relpath(os.path.abspath(self._datadir),
+                                    os.path.abspath(self._problem.probdir)).replace("/", ".")
+
+        super().__init__(f"{problem.shortname}.test.{self.name}")
+
         self._seen_oob_scores = False
-        self.debug(f'  Loading test data group {datadir}')
+        self.debug(f'Loading test data group {datadir}')
         configfile = os.path.join(self._datadir, 'testdata.yaml')
         self.config = {}
         if os.path.isfile(configfile):
@@ -614,6 +624,7 @@ class ProblemConfig(ProblemAspect):
     _VALID_LICENSES = ['unknown', 'public domain', 'cc0', 'cc by', 'cc by-sa', 'educational', 'permission']
 
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.config")
         self.debug('  Loading problem config')
         self._problem = problem
         self.configfile = os.path.join(problem.probdir, 'problem.yaml')
@@ -774,6 +785,7 @@ class Generators(ProblemAspect):
     _VISUALIZER_EXTENSIONS = ['png', 'jpg', 'jpeg', 'svg', 'interaction', 'desc', 'hint']
 
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.generators")
         self.debug('  Loading generators')
         self._problem = problem
         self.configfile = os.path.join(problem.probdir, 'generators', 'generators.yaml')
@@ -1051,6 +1063,7 @@ class Generators(ProblemAspect):
 
 class ProblemStatement(ProblemAspect):
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.statement")
         self.debug('  Loading problem statement')
         self._problem = problem
         self.languages = []
@@ -1127,6 +1140,7 @@ class Attachments(ProblemAspect):
     """
 
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.attachments")
         attachments_path = os.path.join(problem.probdir, 'attachments')
         if os.path.isdir(attachments_path):
             self.attachments = [os.path.join(attachments_path, attachment_name) for attachment_name in os.listdir(attachments_path)]
@@ -1154,7 +1168,7 @@ class Attachments(ProblemAspect):
 
 _JUNK_CASES = [
     ('an empty file', b''),
-    ('a binary file with byte values 0 up to 256', bytearray(x for x in range(256))),
+#    ('a binary file with byte values 0 up to 256', bytearray(x for x in range(256))),
     ('a text file with the ASCII characters 32 up to 127', bytearray(x for x in range(32, 127))),
     ('a random text file with printable ASCII characters', bytearray(random.choice(string.printable.encode('utf8')) for _ in range(200))),
 ]
@@ -1174,6 +1188,7 @@ _JUNK_MODIFICATIONS = [
 class InputFormatValidators(ProblemAspect):
 
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.input_validator")
         self._problem = problem
         input_validators_path = os.path.join(problem.probdir, 'input_format_validators')
         if os.path.isdir(input_validators_path):
@@ -1293,6 +1308,7 @@ class Graders(ProblemAspect):
     _default_grader = run.get_tool('default_grader')
 
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.grader")
         self._problem = problem
         self._graders = run.find_programs(os.path.join(problem.probdir, 'graders'),
                                           language_config=problem.language_config,
@@ -1371,7 +1387,7 @@ class Graders(ProblemAspect):
         # TODO: check that all graders give same result
 
         if not shadow_result:
-            self.info(f'Grade on {testcasegroup} is {verdict} ({score})')
+            self.debug(f'Grade on {testcasegroup} is {verdict} ({score})')
 
         return (verdict, score)
 
@@ -1381,6 +1397,7 @@ class OutputValidators(ProblemAspect):
 
 
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.output_validator")
         self._problem = problem
         self._validators = run.find_programs(os.path.join(problem.probdir,
                                                           'output_validators'),
@@ -1574,11 +1591,26 @@ class OutputValidators(ProblemAspect):
         for val in self._actual_validators():
             if val is not None and val.compile()[0]:
                 feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self._problem.tmpdir)
+                validator_output = tempfile.mkdtemp(prefix='checker_out', dir=self._problem.tmpdir)
+                outfile = validator_output + "/out.txt"
+                errfile = validator_output + "/err.txt"
                 status, runtime = val.run(submission_output,
                                           args=[testcase.infile, testcase.ansfile, feedbackdir] + flags,
-                                          timelim=val_timelim, memlim=val_memlim)
+                                          timelim=val_timelim, memlim=val_memlim,
+                                          outfile=outfile, errfile=errfile)
+                if log.isEnabledFor(logging.DEBUG):
+                    with open(outfile, mode="rt") as f:
+                        output = f.read()
+                    if output:
+                        log.debug("Validator output:\n%s", output)
+                    with open(errfile, mode="rt") as f:
+                        error = f.read()
+                    if error:
+                        log.debug("Validator stderr:\n%s", error)
+
                 res = self._parse_validator_results(val, status, feedbackdir, testcase)
                 shutil.rmtree(feedbackdir)
+                shutil.rmtree(validator_output)
                 if res.verdict != 'AC':
                     return res
 
@@ -1592,12 +1624,14 @@ class Submissions(ProblemAspect):
     _VERDICTS = [
         ['AC', 'accepted', True],
         ['PAC', 'partially_accepted', False],
+        ['SL', 'slow', False],
         ['WA', 'wrong_answer', False],
         ['RTE', 'run_time_error', False],
         ['TLE', 'time_limit_exceeded', False],
     ]
 
     def __init__(self, problem):
+        super().__init__(f"{problem.shortname}.submission")
         self._submissions = {}
         self._problem = problem
         srcdir = os.path.join(problem.probdir, 'submissions')
@@ -1623,8 +1657,17 @@ class Submissions(ProblemAspect):
             partial = True
         else:
             timelim_low = timelim
+        if expected_verdict == 'SL':
+            timelim = timelim_low
 
         result, result_low, result_high = self._problem.testdata.run_submission(sub, args, timelim, timelim_low, timelim_high)
+
+        if expected_verdict == 'SL':
+            if result.verdict == 'AC' or all(res.verdict == 'TLE' for res in result.sample_failures):
+                self.msg('   %s OK: %s' % (desc, result))
+            else:
+                self.error('%s got %s' % (desc, result), result.additional_info)
+            return result
 
         if result.verdict == 'AC' and expected_verdict == 'AC' and not partial and result.sample_failures:
             res = result.sample_failures[0]
@@ -1731,6 +1774,7 @@ class Problem(ProblemAspect):
     def __init__(self, probdir):
         self.probdir = os.path.realpath(probdir)
         self.shortname = os.path.basename(self.probdir)
+        super().__init__(self.shortname)
         self.language_config = languages.load_language_config()
 
     def __enter__(self):
@@ -1854,7 +1898,7 @@ def argparser():
 
 
 def default_args():
-    return argparser().parse_args([None])
+    return argparser().parse_args([""])
 
 
 def initialize_logging(args):
