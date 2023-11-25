@@ -39,15 +39,14 @@ class Template:
         self.statement_directory = texfile.relative_to(problem_root).parent
         self.statement_filename = texfile.name
         self.language = language
-
         self._tempdir: tempfile.TemporaryDirectory | None = None
         self.texfile: Path | None = None
 
         templatepaths = map(
             Path,
             [
-                os.path.join(os.path.dirname(__file__), 'templates/latex'),
-                os.path.join(os.path.dirname(__file__), '../templates/latex'),
+                os.path.dirname(__file__) + '/templates/latex',
+                os.path.dirname(__file__) + '/../templates/latex',
                 '/usr/lib/problemtools/templates/latex',
             ],
         )
@@ -77,13 +76,13 @@ class Template:
         shutil.copyfile(self.clsfile, temp_dir_path / self.CLS_FILENAME)
 
         self.texfile = temp_dir_path / 'main.tex'
-        with open(self.texfile, 'w') as templout, open(self.templatefile) as templin:
+        with self.texfile.open('w') as templout, self.templatefile.open() as templin:
             data = {
                 'problemparent': str(self.problem_root.parent.resolve()),
                 'directory': self.problem_root.name,
                 'statement_directory': self.statement_directory.as_posix(),
                 'statement_filename': self.statement_filename,
-                'language': self.language,
+                'language': '.' + self.language,
             }
             for line in templin:
                 try:

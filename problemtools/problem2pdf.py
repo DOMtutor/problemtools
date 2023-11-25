@@ -88,8 +88,6 @@ def md2pdf(options: argparse.Namespace, statement_file: Path) -> bool:
         temp_tex_file.flush()
         return latex2pdf(options, Path(temp_tex_file.name))
 
-    return False
-
 
 def latex2pdf(options: argparse.Namespace, statement_file: Path) -> bool:
     problem_root = Path(options.problem).resolve(strict=True)
@@ -102,7 +100,7 @@ def latex2pdf(options: argparse.Namespace, statement_file: Path) -> bool:
         origcwd = os.getcwd()
 
         os.chdir(texfile.parent)
-        params = ['lualatex', '--interaction=nonstopmode']
+        params = ['lualatex', '--interaction=nonstopmode', '--shell-escape']
         output = None
         if options.quiet:
             output = open(os.devnull, 'w')
@@ -157,7 +155,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('-o', '--output', dest='destfile', help='output file name', default='${problem}.pdf')
     parser.add_argument('-q', '--quiet', dest='quiet', action='store_true', help='quiet', default=False)
     parser.add_argument('-l', '--language', dest='language', help='choose language (2-letter code)', default='en')
-    parser.add_argument('-n', '--no-pdf', dest='nopdf', action='store_true', help='run pdflatex in -draftmode', default=False)
+    parser.add_argument('-n', '--no-pdf', dest='nopdf', action='store_true', help='run lualatex in -draftmode', default=False)
     parser.add_argument('problem', help='the problem to convert')
     add_version_arg(parser)
 

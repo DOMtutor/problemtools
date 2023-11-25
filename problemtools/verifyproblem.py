@@ -47,7 +47,9 @@ random.seed(42)
 
 log = logging.getLogger(__name__)
 
-Verdict = Literal['AC', 'TLE', 'OLE', 'MLE', 'RTE', 'WA', 'PAC', 'JE']
+Verdict = Literal['AC', 'TLE', 'OLE', 'MLE', 'RTE', 'WA', 'PAC', 'JE', 'SL']
+
+log = logging.getLogger(__name__)
 
 
 def is_TLE(status: int, may_signal_with_usr1: bool = False) -> bool:
@@ -339,7 +341,7 @@ class TestCase(ProblemAspect):
         res_low = self._init_result_for_testcase(res_low)
         res_high = self._init_result_for_testcase(res_high)
         msg = 'Reused test file result' if reused else 'Test file result'
-        self.info(f'{msg}: {res}')
+        self.debug(f'{msg}: {res}')
         if res.verdict != 'AC' and self.is_in_sample_group():
             res.sample_failures.append(res)
 
@@ -1037,7 +1039,7 @@ class Attachments(ProblemPart):
 
 # Junk data. The validator should reject these cases
 _JUNK_CASES = [
-    ('an empty file', b''),
+    ('an empty file', bytearray()),
     ('a binary file with random bytes', bytearray(random.Random(42).randbytes(1024))),
     ('a text file with the ASCII characters 32 up to 127', bytearray(x for x in range(32, 127))),
     (
@@ -1377,7 +1379,7 @@ class OutputValidators(ProblemPart):
 
         self.warn_directory('output validators', 'output_validator_directory')
 
-        safe_output_validator_languages = {'c', 'cpp', 'python3'}
+        safe_output_validator_languages = {'c', 'cpp', 'python3', 'pypy3'}
 
         for v in self._validators:
             if isinstance(v, run.SourceCode) and v.language.lang_id not in safe_output_validator_languages:
@@ -1409,7 +1411,7 @@ class OutputValidators(ProblemPart):
             flags = self.problem.metadata.legacy_validator_flags
 
             # Sanity check cases that should be rejected by the output validator
-            def run_junk_case(case_desc: str, junk_content: bytes, testcases: list[TestCase]) -> list[SubmissionResult]:
+            def run_junk_case(case_desc: str, junk_content: bytes | bytearray, testcases: list[TestCase]) -> list[SubmissionResult]:
                 results = []
                 with tempfile.NamedTemporaryFile(mode='wb') as f:
                     f.write(junk_content)
@@ -1772,6 +1774,7 @@ class Submissions(ProblemPart):
     _VERDICTS: list[tuple[Verdict, str, bool]] = [
         ('AC', 'accepted', True),
         ('PAC', 'partially_accepted', False),
+        ('SL', 'slow', False),
         ('WA', 'wrong_answer', False),
         ('RTE', 'run_time_error', False),
         ('TLE', 'time_limit_exceeded', False),
@@ -1809,9 +1812,18 @@ class Submissions(ProblemPart):
             timelim_low = timelim / self.problem.metadata.limits.time_multipliers.ac_to_time_limit
         else:
             timelim_low = timelim
+        if expected_verdict == 'SL':
+            timelim = timelim_low
 
         with Runner(self.problem, sub, context, timelim, timelim_low, timelim_high) as runner:
             result, result_low, result_high = self.problem.testdata.run_submission(sub, runner, context)
+
+        if expected_verdict == 'SL':
+            if result.verdict == 'AC' or all(res.verdict == 'TLE' for res in result.sample_failures):
+                self.msg('   %s OK: %s' % (desc, result))
+            else:
+                self.error('%s got %s' % (desc, result), result.additional_info)
+            return result
 
         if result.verdict == 'AC' and expected_verdict == 'AC' and not partial and result.sample_failures:
             res = result.sample_failures[0]
@@ -2014,7 +2026,6 @@ class Problem(ProblemAspect):
 
         if self.loaded:
             return
-
         if not os.path.isdir(self.probdir):
             self.fatal(f"Problem directory '{self.probdir}' not found")
 

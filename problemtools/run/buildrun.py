@@ -56,7 +56,7 @@ class BuildRun(Program):
 
     def __str__(self) -> str:
         """String representation"""
-        return '%s/' % (self.path)
+        return '%s/' % self.path
 
     def do_compile(self) -> tuple[bool, str | None]:
         """Run the build script."""
@@ -65,12 +65,12 @@ class BuildRun(Program):
         run = os.path.join(self.path, 'run')
 
         if status:
-            logging.debug('Build script failed (status %d) when compiling %s\n', status, self.name)
-            return (False, 'build script failed with exit code %d' % (status))
+            log.debug('Build script failed (status %d) when compiling %s', status, self.name)
+            return False, 'build script failed with exit code %d' % status
         elif not os.path.isfile(run) or not os.access(run, os.X_OK):
-            return (False, 'build script did not produce an executable called "run"')
+            return False, 'build script did not produce an executable called "run"'
         else:
-            return (True, None)
+            return True, None
 
     def get_runcmd(self, cwd=None, memlim=None) -> list[str]:
         """Run command for the program.

@@ -1,6 +1,8 @@
 """Abstract base class for programs."""
 
 import os
+import pathlib
+
 from . import limit
 import resource
 import signal
@@ -68,7 +70,7 @@ class Program(ABC):
     def do_compile(self) -> tuple[bool, str | None]:
         """Actually compile the program, if needed. Subclasses should override this method.
         Do not call this manually -- use compile() instead."""
-        return (True, None)
+        return True, None
 
     def code_size(self) -> int:
         """Subclasses should override this method with the total size of the
@@ -125,13 +127,28 @@ class Program(ABC):
                     os.chdir(working_directory)
                 os.execvp(argv[0], argv)
             except Exception as exc:
-                print('Oops. Fatal error in child process:')
-                print(exc)
+                log.warning("Oops. Fatal error in child process:", exc_info=exc)
                 os.kill(os.getpid(), signal.SIGTERM)
             # Unreachable
-            log.error('Unreachable part of run_wait reached')
+            log.error("Unreachable part of run_wait reached")
             os.kill(os.getpid(), signal.SIGTERM)
         (pid, status, rusage) = os.wait4(pid, 0)
+        if status:
+            log.debug("Program exited with status %s", status)
+            try:
+                with pathlib.Path(outfile).open('rt') as f:
+                    stdout = f.read().strip()
+                if stdout:
+                    log.debug("Stdout:\n%s", stdout)
+            except Exception as e:
+                log.debug("Failed to read program output", e)
+            try:
+                with pathlib.Path(errfile).open('rt') as f:
+                    stderr = f.read().strip()
+                if stderr:
+                    log.debug("Stderr:\n%s", stderr)
+            except Exception as e:
+                log.debug("Failed to read program output", e)
         return status, rusage.ru_utime + rusage.ru_stime
 
     @staticmethod
