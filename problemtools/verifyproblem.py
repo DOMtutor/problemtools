@@ -1414,7 +1414,7 @@ class OutputValidators(ProblemAspect):
             return self._check_res
         self._check_res = True
 
-        recommended_output_validator_languages = {'c', 'cpp', 'python3'}
+        recommended_output_validator_languages = {'c', 'cpp', 'python3', 'pypy3'}
 
         for v in self._validators:
             if not isinstance(v, run.BuildRun) and v.language.lang_id not in recommended_output_validator_languages:
