@@ -263,8 +263,8 @@ rust:
 #    compile: '/usr/bin/env scalac -encoding UTF-8 -sourcepath {path} -d {path} {files}'
 #    run: '/usr/bin/env scala -J-Xmx{memlim}m -classpath {path} {mainclass}'
 
-julia:
-    name: 'Julia'
-    priority: 440
-    files: '*.jl *.julia'
-    run: '/usr/bin/env julia "{mainfile}"'
+#julia:
+#    name: 'Julia'
+#    priority: 440
+#    files: '*.jl *.julia'
+#    run: '/usr/bin/env julia "{mainfile}"'

@@ -1,6 +1,8 @@
 """Abstract base class for programs.
 """
 import os
+import pathlib
+
 from . import limit
 import resource
 import signal
@@ -115,6 +117,22 @@ class Program(object):
             log.error("Unreachable part of run_wait reached")
             os.kill(os.getpid(), signal.SIGTERM)
         (pid, status, rusage) = os.wait4(pid, 0)
+        if status:
+            log.debug("Program exited with status %s", status)
+            try:
+                with pathlib.Path(outfile).open('rt') as f:
+                    stdout = f.read().strip()
+                if stdout:
+                    log.debug("Stdout:\n%s", stdout)
+            except Exception as e:
+                log.debug("Failed to read program output", e)
+            try:
+                with pathlib.Path(errfile).open('rt') as f:
+                    stderr = f.read().strip()
+                if stderr:
+                    log.debug("Stderr:\n%s", stderr)
+            except Exception as e:
+                log.debug("Failed to read program output", e)
         return status, rusage.ru_utime + rusage.ru_stime
 
 
