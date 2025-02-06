@@ -54,7 +54,8 @@
 \RequirePackage{import}           % Proper file inclusion
 \RequirePackage{fancyvrb}         %
 \RequirePackage{listings}
-\RequirePackage{minted}
+%\RequirePackage{minted}
+\RequirePackage[explicit]{titlesec}
 %%\RequirePackage{listingsutf8}     % For samples
 \RequirePackage[left=1in,right=1in,top=0.75in,bottom=0.75in]{geometry}
 %\RequirePackage{fullpage}        % Set up margins for full page
@@ -70,7 +71,7 @@
 \RequirePackage{lualatex-math}
 \RequirePackage{unicode-math}
 \RequirePackage[sfdefault,book,lining]{FiraSans}
-\RequirePackage{FiraMono}
+\RequirePackage[lining]{FiraMono}
 \RequirePackage[fakebold,mathrm=sym]{firamath-otf}
 
 %\usepackage{lstautogobble}
@@ -86,10 +87,10 @@
 %	stringstyle=\color{purple}
 %}
 
-\setminted{fontsize=\small,autogobble,tabsize=2}
-\newenvironment{code}[1]%
-{\VerbatimEnvironment\begin{minted}[escapeinside=§§,mathescape=true,fontsize=\footnotesize]{#1}}%
-{\end{minted}}
+%\setminted{fontsize=\small,autogobble,tabsize=2}
+%\newenvironment{code}[1]%
+%{\VerbatimEnvironment\begin{minted}[escapeinside=§§,mathescape=true,fontsize=\footnotesize]{#1}}%
+%{\end{minted}}
 
 \ifplastex\else
 \RequirePackage{xstring}
@@ -126,17 +127,26 @@
   \addtolength{\textheight}{-\headheight}
 }
 
-
-
 % Typesetting sections in a problem
 
 \renewcommand{\section}{\@startsection{section}{1}{\z@}{-3ex}{1ex}{\normalfont\large\sf\bfseries}}
-\newenvironment{Input}{\section*{Input}}{}
-\newenvironment{Output}{\section*{Output}}{}
-\newenvironment{Constraints}{\section*{Constraints}}{}
-\newenvironment{Interaction}{\section*{Interaction}}{}
+%\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}{-3.55ex}{1.7ex}{\normalfont\normalsize\sf\bfseries}}
 
-\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}{-3.55ex}{1.7ex}{\normalfont\normalsize\sf\bfseries}}
+\if@aiwatermark
+\titleformat{\subsection}[block]{\normalfont\normalsize\sffamily\bfseries}{label}{1em}{#1}%
+[\begin{quote}\normalfont\normalem{}This is a graded academic assignment.
+AI-generated solutions are NOT allowed.
+You must write your own code without assistance from AI-based tools.
+Use of AI tools (such as DeepSeek, ChatGPT, etc.) is strictly prohibited.\end{quote}]
+\else
+\titleformat{\subsection}[block]{\normalfont\normalsize\sffamily\bfseries}{label}{1em}{#1}[]
+\fi
+
+\newenvironment{Input}{\subsection*{Input}}{}
+\newenvironment{Output}{\subsection*{Output}}{}
+\newenvironment{Constraints}{\subsection*{Constraints}}{}
+\newenvironment{Interaction}{\subsection*{Interaction}}{}
+
 
 \renewcommand{\contentsname}{Problems}
 
@@ -194,12 +204,6 @@
 \fi
 
 \if@aiwatermark
-\RequirePackage{everypage}
-\RequirePackage{draftwatermark}
-\SetWatermarkText{Academic Assignment - No AI Solutions}
-\SetWatermarkScale{0.25}
-\SetWatermarkColor[gray]{0.97}
-\SetWatermarkAngle{45}
 
 % Set PDF metadata after loading hyperref
 \hypersetup{
@@ -212,14 +216,31 @@
 	pdfinfo={IntegrityFlag=NoAISolutions}
 }
 
-\newcommand{\addNoise}{%
-  \begin{tikzpicture}[remember picture, overlay]
-    \foreach \x in {0,1,...,500} {
-      \fill[gray!5] (page cs:rand,rand) circle (rand * 0.1);
-    }
-  \end{tikzpicture}%
-}
-\AddEverypageHook{\addNoise}
+%\RequirePackage{draftwatermark}
+%\SetWatermarkText{Academic Assignment - No AI Solutions}
+%\SetWatermarkScale{0.25}
+%\SetWatermarkColor[gray]{0.97}
+%\SetWatermarkAngle{45}
+%\RequirePackage{eso-pic}
+%\usetikzlibrary{calc}
+%\newcommand{\addNoise}{%
+%\begin{tikzpicture}[remember picture,overlay,shift=(current page.north west)]
+%	\foreach \x in {0,1,...,100} {
+%		\pgfmathparse{rnd*0.2 + 0.1}
+%		\fill[gray,fill opacity=\pgfmathresult] ($(current page.north west)!rnd!(current page.south west) + (current page.north west)!rnd!(current page.north east)$) circle (rnd * 0.1 + 0.1);
+%	}
+%\end{tikzpicture}%
+%}
+%\newcommand{\addNote}{%
+%\begin{tikzpicture}[remember picture,overlay,shift=(current page.north west)]
+%	\foreach \y in {-30,-28,...,30} {
+%		\node[gray,text opacity=.8,rotate=10,font=\Huge] at ($(current page.north west)!.5!(current page.south west) + (current page.north west)!.5!(current page.north east) + (0,\y)$) {
+%			\quad Academic Assignment -- No AI allowed \quad Academic Assignment -- No AI allowed \quad Academic Assignment -- No AI allowed \quad Academic Assignment -- No AI allowed \quad Academic Assignment -- No AI allowed
+%		};
+%	}
+%\end{tikzpicture}%
+%}
+%\AddToShipoutPictureFG{\addNote}
 \fi
 
 %% Command for starting new problem
