@@ -14,7 +14,7 @@ def detect_version(problemdir, problemtex):
 
 
 class Template:
-    def __init__(self, problemdir, language=None, force_copy_cls=False):
+    def __init__(self, problemdir, language=None, force_copy_cls=False, problemset_options=None):
         if not os.path.isdir(problemdir):
             raise Exception('%s is not a directory' % problemdir)
 
@@ -74,6 +74,10 @@ class Template:
                                    for f in (glob.glob(os.path.join(sample_dir, '*.in')) +
                                              glob.glob(os.path.join(sample_dir, '*.interaction')))]))
         self.problemset_cls = os.path.join(self.basedir, 'problemset.cls')
+        if problemset_options is None:
+            self.problemset_options = []
+        else:
+            self.problemset_options = problemset_options
 
         self.copy_cls = True
         if os.path.isfile(self.problemset_cls) and not force_copy_cls:
@@ -89,7 +93,8 @@ class Template:
         templout = os.fdopen(templfd, 'w')
         templin = open(os.path.join(self.templatepath, self.templatefile))
         data = {'language': self.language,
-                'shortname': self.shortname}
+                'shortname': self.shortname,
+                'problemset_options': "".join("," + opt for opt in self.problemset_options)}
         for line in templin:
             try:
                 templout.write(line % data)
