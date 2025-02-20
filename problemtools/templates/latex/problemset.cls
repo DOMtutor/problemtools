@@ -62,6 +62,7 @@
 \RequirePackage{booktabs}
 \RequirePackage{csquotes}
 \RequirePackage{setspace}
+\RequirePackage{siunitx}
 
 %\usepackage{lstautogobble}
 %\lstset{
