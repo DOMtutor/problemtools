@@ -105,6 +105,8 @@
 \newcommand*{\location}[1]{\def\@location{#1}}
 \newcommand*{\licenseblurb}[1]{\def\@licenseblurb{#1}}
 \newcommand*{\problemlanguage}[1]{\def\@problemlanguage{#1}}
+\newcommand*{\statementdirectory}[1]{\def\@statementdirectory{#1}}
+\newcommand*{\statementfilename}[1]{\def\@statementfilename{#1}}
 \contestname{}
 \contestshortname{}
 \contestlogo{}
