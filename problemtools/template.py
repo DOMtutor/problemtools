@@ -69,7 +69,7 @@ class Template:
             'directory': self.problem_root.name,
             'statement_directory': self.statement_directory,
             'statement_filename': self.statement_filename,
-            'language': self.language,
+            'language': ('.' + self.language),
         }
         for line in templin:
             try:
